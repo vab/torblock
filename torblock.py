@@ -61,10 +61,10 @@ def blocknode(ip):
 	if public_ipaddr(ip) and numeric_ipaddr(ip):
 		ip = ip + "/32"
 		try: subprocess.check_call(['iptables', '-A', 'INPUT', '-s', ip, '-j', 'DROP'])
- 		except OSerror as e:
+ 		except OSError as e:
 			if (e[0] == errno.EPERM):
-			print >> sys.stderr, "Since this script modifies the firewall with iptables it must be run with root privileges."
-      sys.exit(1)
+				print >> sys.stderr, "Since this script modifies the firewall with iptables it must be run with root privileges."
+				sys.exit(1)
 		print "Dropping all packets from " + ip
 	return True
 
@@ -86,4 +86,3 @@ for line in response.iter_lines():
 		ip = line.split(' ', 3 )
 		if re.match("^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$", ip[1]):
 			blocknode(ip[1])
-
