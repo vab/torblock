@@ -6,9 +6,9 @@
 # Date: 2013-10-22
 
 # Description:  This script attempts to block all known tor exit nodes (as
-#				reported by the Tor Project's website) from communicating
-#				with the server that it is run on using iptables firewalling
-#				rules.
+#		reported by the Tor Project's website) from communicating
+#		with the server that it is run on using iptables firewalling
+#		rules.
 
 import sys
 import re
@@ -86,5 +86,4 @@ for line in response.iter_lines():
 		ip = line.split(' ', 3 )
 		if re.match("^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$", ip[1]):
 			blocknode(ip[1])
-		
 
