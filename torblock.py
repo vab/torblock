@@ -5,25 +5,18 @@
 # License: This script is public domain
 # Date: 2013-10-22
 
-# Description: This script attempts to block known tor exit nodes from
-#              communicating with the server that it is run on using
-#              iptables firewalling rules.
+# Description:  This script attempts to block all known tor exit nodes (as
+#				reported by the Tor Project's website) from communicating
+#				with the server that it is run on using iptables firewalling
+#				rules.
 
 import sys
+import re
+import requests
+import subprocess
 
 
-# This function will print out the usage information
-def usage():
-	"""Prints usage information and exits."""
-	print "Usage: torblock.py (text file containing \\n delimited list)"
-	print "Example: torblock.py torexits.txt"
-	print "Options: -h      This Help Text"
-	print "         --help  This Help Text"
-	print
-	sys.exit(0)
-
-
-# Numeric IP address
+# Validate numeric IP address
 def numeric_ipaddr(ip):
 	quads = ip.split('.')
 	if( len(quads) != 4):
@@ -38,6 +31,9 @@ def numeric_ipaddr(ip):
 
 
 # Validate public addressable IP address (not private, loopback, or broadcast)
+# This function makes sure we do not cause system problems by banning the 
+# loopback, broadcast, or any private IP networks that may be in use locally
+# should the website return invalid exit addresses.
 def public_ipaddr(ip):
 	quads = ip.split('.')
 	# Invalid
@@ -61,16 +57,16 @@ def public_ipaddr(ip):
 
 
 # Execute iptables command to block a node after sanity checking
-def blocknodes(arg):
-	return
-
-
-# If the script isn't given a file containing a list of tor exit nodes, it
-# should provide usage information and exit.
-if len(sys.argv) < 2:
-	usage()
-elif len(sys.argv) > 3:
-	usage()
+def blocknode(ip):
+	if public_ipaddr(ip) and numeric_ipaddr(ip):
+		ip = ip + "/32"
+		try: subprocess.check_call(['iptables', '-A', 'INPUT', '-s', ip, '-j', 'DROP'])
+ 		except OSerror as e:
+			if (e[0] == errno.EPERM):
+			print >> sys.stderr, "Since this script modifies the firewall with iptables it must be run with root privileges."
+      sys.exit(1)
+		print "Dropping all packets from " + ip
+	return True
 
 
 # The main loop. It calls the blocknodes() function to attempt to open the
@@ -78,9 +74,17 @@ elif len(sys.argv) > 3:
 # an iptables command to block a node. If it encounters a help request, it
 # calls the usage() function to print the usage information and exit the
 # program.
-for arg in sys.argv[1:]:
-	if(arg == "-h" or arg == "--help"): 
-		usage()
-	else: 
-		blocknodes(arg)
+
+print "Blocking all tor exit nodes."
+
+print "Retrieving list of nodes from Tor project website."
+exits = "https://check.torproject.org/exit-addresses"
+
+response = requests.get(exits, stream=True)
+for line in response.iter_lines():
+	if 'ExitAddress' in line:
+		ip = line.split(' ', 3 )
+		if re.match("^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$", ip[1]):
+			blocknode(ip[1])
+		
 
