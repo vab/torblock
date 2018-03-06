@@ -1,16 +1,18 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 # Block Tor Exit Nodes With Iptables
-# Author: V. Alex Brennen <vab@mit.edu>
+# Author: V. Alex Brennen <vab@protonmail.com>
 # License: This script is public domain
 # Date: 2013-10-22
+# Last Updated: 2018-02-06
 
 # Description:  This script attempts to block all known tor exit nodes (as
-#		reported by the Tor Project's website) from communicating
-#		with the server that it is run on using iptables firewalling
-#		rules.
+#				reported by the Tor Project's website) from communicating
+#				with the server that it is run on using iptables firewalling
+#				rules.
 
 import sys
+import errno
 import re
 import requests
 import subprocess
@@ -31,7 +33,7 @@ def numeric_ipaddr(ip):
 
 
 # Validate public addressable IP address (not private, loopback, or broadcast)
-# This function makes sure we do not cause system problems by banning the 
+# This function makes sure we do not cause system problems by banning the
 # loopback, broadcast, or any private IP networks that may be in use locally
 # should the website return invalid exit addresses.
 def public_ipaddr(ip):
@@ -61,11 +63,11 @@ def blocknode(ip):
 	if public_ipaddr(ip) and numeric_ipaddr(ip):
 		ip = ip + "/32"
 		try: subprocess.check_call(['iptables', '-A', 'INPUT', '-s', ip, '-j', 'DROP'])
- 		except OSError as e:
+		except OSError as e:
 			if (e[0] == errno.EPERM):
-				print >> sys.stderr, "Since this script modifies the firewall with iptables it must be run with root privileges."
+				print("Since this script modifies the firewall with iptables it must be run with root privileges.", file=sys.stderr)
 				sys.exit(1)
-		print "Dropping all packets from " + ip
+		print("Dropping all packets from " + ip)
 	return True
 
 
@@ -75,13 +77,14 @@ def blocknode(ip):
 # calls the usage() function to print the usage information and exit the
 # program.
 
-print "Blocking all tor exit nodes."
+print("Blocking all tor exit nodes.")
 
-print "Retrieving list of nodes from Tor project website."
+print("Retrieving list of nodes from Tor project website.")
 exits = "https://check.torproject.org/exit-addresses"
 
 response = requests.get(exits, stream=True)
 for line in response.iter_lines():
+	line = line.decode("UTF-8").strip()
 	if 'ExitAddress' in line:
 		ip = line.split(' ', 3 )
 		if re.match("^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$", ip[1]):
