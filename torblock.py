@@ -7,15 +7,24 @@
 # Last Updated: 2018-02-06
 
 # Description:  This script attempts to block all known tor exit nodes (as
-#				reported by the Tor Project's website) from communicating
-#				with the server that it is run on using iptables firewalling
-#				rules.
+#			reported by the Tor Project's website) from communicating
+#			with the server that it is run on using iptables firewalling
+#			rules.
 
 import sys
 import errno
+import argparse
 import re
 import requests
 import subprocess
+
+
+# Arguments
+def parse_args():
+	parser = argparse.ArgumentParser()
+	parser.add_argument("-d", "--dryrun", action="store_true", help="Display nodes to block. But, take no action." )
+	parser.add_argument("-n", "--hostsdeny", metavar="Filename", type=argparse.FileType("a"), help="Write nodes to hosts.deny format file.")
+	return parser.parse_args()
 
 
 # Validate numeric IP address
@@ -58,16 +67,28 @@ def public_ipaddr(ip):
 		return True
 
 
+def hostsdeny(ip, out_file):
+	out_file.write("ALL : " + ip + "\n")
+	return
+
+
 # Execute iptables command to block a node after sanity checking
 def blocknode(ip):
 	if public_ipaddr(ip) and numeric_ipaddr(ip):
-		ip = ip + "/32"
-		try: subprocess.check_call(['iptables', '-A', 'INPUT', '-s', ip, '-j', 'DROP'])
-		except OSError as e:
-			if (e[0] == errno.EPERM):
-				print("Since this script modifies the firewall with iptables it must be run with root privileges.", file=sys.stderr)
-				sys.exit(1)
-		print("Dropping all packets from " + ip)
+		if args.dryrun:
+			print("Dropping all packets from " + ip + "/32")
+		elif args.hostsdeny:
+			# Write to file in hosts.deny format
+			hostsdeny(ip, args.hostsdeny)
+			print("Adding " + ip + " to " + args.hostsdeny + " in hosts.deny format")
+		else:
+			print("Dropping all packets from " + ip + "/32")
+			ip = ip + "/32"
+			try: subprocess.check_call(['iptables', '-A', 'INPUT', '-s', ip, '-j', 'DROP'])
+			except OSError as e:
+				if (e[0] == errno.EPERM):
+					print("Since this script modifies the firewall with iptables it must be run with root privileges.", file=sys.stderr)
+					sys.exit(1)
 	return True
 
 
@@ -76,6 +97,7 @@ def blocknode(ip):
 # an iptables command to block a node. If it encounters a help request, it
 # calls the usage() function to print the usage information and exit the
 # program.
+args = parse_args()
 
 print("Blocking all tor exit nodes.")
 
