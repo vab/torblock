@@ -26,6 +26,7 @@ def parse_args():
 	parser.add_argument("-a22", "--apache22", metavar="apache22file", type=argparse.FileType("a"), help="Write notes to Apache 2.2 format file.")
 	parser.add_argument("-d", "--dryrun", action="store_true", help="Display nodes to block. But, take no action." )
 	parser.add_argument("-n", "--nginx", metavar="nginxfile", type=argparse.FileType("a"), help="Write nodes to nginx deny format file.")
+	parser.add_argument("-r", "--raw", metavar="rawfile", type=argparse.FileType("a"), help="Write notes to a line delimited text file.")
 	parser.add_argument("-w", "--hostsdeny", metavar="Filename", type=argparse.FileType("a"), help="Write nodes to hosts.deny format file.")
 	return parser.parse_args()
 
@@ -90,6 +91,11 @@ def hostsdeny(ip, out_file):
 	return
 
 
+def ipfile(ip, out_file):
+	out_file.write(ip + "\n")
+	return;
+
+
 # Execute iptables command to block a node after sanity checking
 def blocknode(ip):
 	if public_ipaddr(ip) and numeric_ipaddr(ip):
@@ -111,6 +117,10 @@ def blocknode(ip):
 			# Write to file in hosts.deny format
 			hostsdeny(ip, args.hostsdeny)
 			print("Adding " + ip + " to " + args.hostsdeny.name + " in hosts.deny format")
+		elif args.raw:
+			# Write ips to file line delimited with no formating
+			ipfile(ip, args.raw)
+			print("Adding " + ip)
 		else:
 			print("Dropping all packets from " + ip + "/32")
 			ip = ip + "/32"
