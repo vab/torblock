@@ -24,9 +24,10 @@ def parse_args():
 	parser = argparse.ArgumentParser()
 	parser.add_argument("-a", "--apache", metavar="apachefile", type=argparse.FileType("a"), help="Write notes to Apache 2.4+ format file.")
 	parser.add_argument("-a22", "--apache22", metavar="apache22file", type=argparse.FileType("a"), help="Write notes to Apache 2.2 format file.")
-	parser.add_argument("-d", "--dryrun", action="store_true", help="Display nodes to block. But, take no action." )
+	parser.add_argument("-d", "--dryrun", action="store_true", help="Display nodes to block. But, take no action.")
 	parser.add_argument("-n", "--nginx", metavar="nginxfile", type=argparse.FileType("a"), help="Write nodes to nginx deny format file.")
 	parser.add_argument("-r", "--raw", metavar="rawfile", type=argparse.FileType("a"), help="Write notes to a line delimited text file.")
+	parser.add_argument("-u", "--ufw", action="store_true", help="Block the names using Ubuntu's ufw firewall.")
 	parser.add_argument("-w", "--hostsdeny", metavar="Filename", type=argparse.FileType("a"), help="Write nodes to hosts.deny format file.")
 	return parser.parse_args()
 
@@ -86,6 +87,17 @@ def blocknginx(ip, out_file):
 	return
 
 
+def blockufw(ip):
+	print("Dropping all packets from " + ip + "/32")
+	try:
+		subprocess.check_call(['ufw', 'deny', 'from', ip])
+	except OSError as e:
+		if (e[0] == errno.EPERM):
+			print("Since this script modifies the firewall with ufw it must be run with root privileges.", file=sys.stderr)
+			sys.exit(1)
+	return
+
+
 def hostsdeny(ip, out_file):
 	out_file.write("ALL : " + ip + "\n")
 	return
@@ -124,7 +136,8 @@ def blocknode(ip):
 		else:
 			print("Dropping all packets from " + ip + "/32")
 			ip = ip + "/32"
-			try: subprocess.check_call(['iptables', '-A', 'INPUT', '-s', ip, '-j', 'DROP'])
+			try:
+				subprocess.check_call(['iptables', '-A', 'INPUT', '-s', ip, '-j', 'DROP'])
 			except OSError as e:
 				if (e[0] == errno.EPERM):
 					print("Since this script modifies the firewall with iptables it must be run with root privileges.", file=sys.stderr)
