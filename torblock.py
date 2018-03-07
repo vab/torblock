@@ -4,7 +4,7 @@
 # Author: V. Alex Brennen <vab@protonmail.com>
 # License: This script is public domain
 # Date: 2013-10-22
-# Last Updated: 2018-02-06
+# Last Updated: 2018-02-07
 
 # Description:  This script attempts to block all known tor exit nodes (as
 #			reported by the Tor Project's website) from communicating
@@ -22,6 +22,8 @@ import subprocess
 # Arguments
 def parse_args():
 	parser = argparse.ArgumentParser()
+	parser.add_argument("-a", "--apache", metavar="apachefile", type=argparse.FileType("a"), help="Write notes to Apache 2.4+ format file.")
+	parser.add_argument("-a22", "--apache22", metavar="apache22file", type=argparse.FileType("a"), help="Write notes to Apache 2.2 format file.")
 	parser.add_argument("-d", "--dryrun", action="store_true", help="Display nodes to block. But, take no action." )
 	parser.add_argument("-n", "--nginx", metavar="nginxfile", type=argparse.FileType("a"), help="Write nodes to nginx deny format file.")
 	parser.add_argument("-w", "--hostsdeny", metavar="Filename", type=argparse.FileType("a"), help="Write nodes to hosts.deny format file.")
@@ -68,6 +70,16 @@ def public_ipaddr(ip):
 		return True
 
 
+def blockapache(ip, out_file):
+	out_file.write("\tRequire not ip " + ip + "/32\n")
+	return
+
+
+def blockapache22(ip, out_file):
+	out_file.write("\tdeny from " + ip + "/32\n")
+	return
+
+
 def blocknginx(ip, out_file):
 	out_file.write("deny {ip};\n".format(ip=ip))
 	return
@@ -83,6 +95,14 @@ def blocknode(ip):
 	if public_ipaddr(ip) and numeric_ipaddr(ip):
 		if args.dryrun:
 			print("Dropping all packets from " + ip + "/32")
+		elif args.apache:
+			# Write to file in apache format
+			blockapache(ip, args.apache)
+			print("Adding " + ip + " to " + args.apache.name + " in apache format")
+		elif args.apache22:
+			# Write to file in deprecated apache v2.2 format
+			blockapache22(ip, args.apache22)
+			print("Adding " + ip + " to " + args.apache22.name + " in apache22 format")
 		elif args.nginx:
 			# Write to file in nginx information
 			blocknginx(ip, args.nginx)
