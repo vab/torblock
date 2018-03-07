@@ -23,7 +23,8 @@ import subprocess
 def parse_args():
 	parser = argparse.ArgumentParser()
 	parser.add_argument("-d", "--dryrun", action="store_true", help="Display nodes to block. But, take no action." )
-	parser.add_argument("-n", "--hostsdeny", metavar="Filename", type=argparse.FileType("a"), help="Write nodes to hosts.deny format file.")
+	parser.add_argument("-n", "--nginx", metavar="nginxfile", type=argparse.FileType("a"), help="Write nodes to nginx deny format file.")
+	parser.add_argument("-w", "--hostsdeny", metavar="Filename", type=argparse.FileType("a"), help="Write nodes to hosts.deny format file.")
 	return parser.parse_args()
 
 
@@ -67,6 +68,11 @@ def public_ipaddr(ip):
 		return True
 
 
+def blocknginx(ip, out_file):
+	out_file.write("deny {ip};\n".format(ip=ip))
+	return
+
+
 def hostsdeny(ip, out_file):
 	out_file.write("ALL : " + ip + "\n")
 	return
@@ -77,10 +83,14 @@ def blocknode(ip):
 	if public_ipaddr(ip) and numeric_ipaddr(ip):
 		if args.dryrun:
 			print("Dropping all packets from " + ip + "/32")
+		elif args.nginx:
+			# Write to file in nginx information
+			blocknginx(ip, args.nginx)
+			print("Adding " + ip + " to " + args.nginx.name + " in nginx format")
 		elif args.hostsdeny:
 			# Write to file in hosts.deny format
 			hostsdeny(ip, args.hostsdeny)
-			print("Adding " + ip + " to " + args.hostsdeny + " in hosts.deny format")
+			print("Adding " + ip + " to " + args.hostsdeny.name + " in hosts.deny format")
 		else:
 			print("Dropping all packets from " + ip + "/32")
 			ip = ip + "/32"
